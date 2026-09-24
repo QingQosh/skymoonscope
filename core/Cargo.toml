@@ -95,3 +95,7 @@ harness = false
 [[bench]]
 name = "memory_bench"
 harness = false
+
+# Declare this crate as its own workspace root so `cargo` does not walk up
+# to the parent workspace (which contains contracts with invalid package names).
+[workspace]
