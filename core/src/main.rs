@@ -294,7 +294,18 @@ fn load_config() -> Result<AppConfig, ConfigError> {
         .set_default("allowed_origins", "")?
         .build()?;
 
-    settings.try_deserialize()
+    let app_config: AppConfig = settings.try_deserialize()?;
+    if app_config.server_port == 0
+        && env::var("APP_ENV")
+            .is_ok_and(|environment| environment.eq_ignore_ascii_case("production"))
+    {
+        return Err(ConfigError::Message(
+            "SERVER_PORT must be between 1 and 65535 in production; port 0 requests an OS-assigned port."
+                .to_string(),
+        ));
+    }
+
+    Ok(app_config)
 }
 
 /// Build the tracing `EnvFilter` from the configured log directive

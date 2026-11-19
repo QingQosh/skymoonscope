@@ -5,6 +5,7 @@ pub mod benchmarks;
 pub mod cache;
 pub mod call_trace_parser;
 pub mod comparison;
+pub mod config;
 pub mod contract_registry;
 pub mod cors;
 pub mod engine;

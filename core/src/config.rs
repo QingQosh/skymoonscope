@@ -390,6 +390,7 @@ impl AppConfig {
     /// | `soroban_rpc_url` | Must not point to Stellar testnet |
     /// | `cors_allowed_origins` | Must not be empty (allow-all) |
     /// | `jwt_private_key` | Must be explicitly provided |
+    /// | `server_port` | Must be in the range `1..=65535` |
     /// | `inbound_webhook_secret` | Must be non-empty when webhooks are used |
     pub fn validate_production(&self) -> Result<(), ConfigLoadError> {
         if !self.is_production() {
@@ -397,6 +398,14 @@ impl AppConfig {
         }
 
         let mut errors: Vec<String> = Vec::new();
+
+        if self.server_port == 0 {
+            errors.push(
+                "SERVER_PORT: must be between 1 and 65535 in production; port 0 requests an \
+                 OS-assigned port."
+                    .to_string(),
+            );
+        }
 
         // Database must be a real PostgreSQL connection in production.
         if self.database_url.starts_with("sqlite://") {
@@ -668,7 +677,7 @@ mod tests {
             cors_allowed_origins: "https://app.example.com".to_string(),
             jwt_private_key: Some("-----BEGIN RSA PRIVATE KEY-----\nMIIE...\n-----END RSA PRIVATE KEY-----".to_string()),
             // Remaining fields use defaults
-            server_port: 8080,
+            server_port: 65535,
             rust_log: "info".to_string(),
             log_format_json: false,
             redis_url: "redis://127.0.0.1:6379".to_string(),
@@ -708,7 +717,7 @@ mod tests {
             cors_allowed_origins: String::new(), // ← bad: allow-all
             allowed_origins: String::new(),
             jwt_private_key: None,               // ← bad: no key
-            server_port: 8080,
+            server_port: 0,
             rust_log: "info".to_string(),
             log_format_json: false,
             redis_url: "redis://127.0.0.1:6379".to_string(),
@@ -737,13 +746,14 @@ mod tests {
         assert!(result.is_err(), "expected validation to fail");
 
         if let Err(ConfigLoadError::Validation(errors)) = result {
-            // All five misconfigured fields must be reported in one shot.
+            // All misconfigured fields must be reported in one shot.
             assert_eq!(
                 errors.len(),
-                5,
-                "expected 5 validation errors, got {}: {errors:#?}",
+                6,
+                "expected 6 validation errors, got {}: {errors:#?}",
                 errors.len()
             );
+            assert!(errors.iter().any(|error| error.contains("SERVER_PORT")));
         } else {
             panic!("expected ConfigLoadError::Validation variant");
         }
@@ -760,7 +770,7 @@ mod tests {
             cors_allowed_origins: String::new(),
             allowed_origins: String::new(),
             jwt_private_key: None,
-            server_port: 8080,
+            server_port: 0,
             rust_log: "info".to_string(),
             log_format_json: false,
             redis_url: "redis://127.0.0.1:6379".to_string(),
